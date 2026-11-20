@@ -65,6 +65,58 @@ def export_entries(
         headers={"Content-Disposition": 'attachment; filename="watermark_track.csv"'})
 
 
+@router.get("/reports/overview")
+def report_overview() -> dict:
+    """按当前业务版本给出双水位偏移报告概览，列表与详情读同一份报告。"""
+    return service.report_overview()
+
+
+@router.get("/reports", response_model=PageResult[dict])
+def list_reports(
+    topic: str | None = Query(default=None, description="数据主题"),
+    check_version: str | None = Query(default=None, description="检查版本"),
+    status: str | None = Query(default=None, description="完整、不完整"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=200),
+) -> PageResult[dict]:
+    """按主题、检查版本与状态过滤水位偏移报告。"""
+    items, total = service.list_reports(
+        topic=topic, check_version=check_version, status=status, page=page, size=size)
+    return PageResult(items=items, total=total, page=page, size=size)
+
+
+@router.get("/reports/{report_id}", response_model=dict)
+def get_report(report_id: int) -> dict:
+    """读取一份水位偏移报告，保留偏移来源与受影响分区。"""
+    report = service.get_report(report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"水位偏移报告 {report_id} 不存在或已归档")
+    return report
+
+
+@router.post("/reports/generate", response_model=ActionResult)
+def generate_report(payload: dict[str, object]) -> ActionResult:
+    """生成双水位偏移报告；scope=全部 表示重算全部分区。"""
+    topic_code = str(payload.get("topic") or payload.get("数据主题") or "").strip()
+    if not topic_code:
+        return ActionResult(ok=False, message="缺少数据主题")
+    report, message = service.generate_offset_report(
+        topic_code,
+        check_version=(str(payload.get("check_version")).strip() if payload.get("check_version") else None),
+        source=(str(payload.get("source")).strip() if payload.get("source") else None),
+        scope=str(payload.get("scope") or "缺失"),
+        interrupt_after=(int(payload["interrupt_after"]) if payload.get("interrupt_after") is not None else None),
+    )
+    return ActionResult(ok=report is not None, message=message, entry=report)
+
+
+@router.post("/reports/{report_id}/retry", response_model=ActionResult)
+def retry_report(report_id: int) -> ActionResult:
+    """处理中断后重试：沿用同一检查版本，只补齐缺失分区。"""
+    report, message = service.retry_offset_report(report_id)
+    return ActionResult(ok=report is not None, message=message, entry=report)
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条水位标记明细；不存在时给出可读的错误说明。"""

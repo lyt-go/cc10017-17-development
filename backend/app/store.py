@@ -8,6 +8,9 @@ from typing import Any
 
 from app.seed import SEED_ROWS
 
+# 只作为模块内部支撑数据存在，不算业务模块，不参与运营概览统计。
+INTERNAL_TABLES = {"watermark_partition_samples"}
+
 
 class Store:
     def __init__(self) -> None:
@@ -16,7 +19,7 @@ class Store:
         }
 
     def module_names(self) -> list[str]:
-        return sorted(self._tables)
+        return sorted(name for name in self._tables if name not in INTERNAL_TABLES)
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])
@@ -43,6 +46,7 @@ class Store:
             "quality_inspection_results", "materialized_refresh_log",
             "sink_dispatch_queue", "compact_results",
             "ttl_applied_log", "realtime_metric_results",
+            "watermark_offset_reports", "quality_partition_alerts",
         ]
         artifact_counts = {n: len(self.rows(n)) for n in artifact_names}
         total_artifacts = sum(artifact_counts.values())

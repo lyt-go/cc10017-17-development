@@ -65,6 +65,22 @@ def export_entries(
         headers={"Content-Disposition": 'attachment; filename="stream_quality.csv"'})
 
 
+@router.get("/alerts", response_model=dict)
+def list_alerts(topic: str | None = Query(default=None, description="监控主题")) -> dict:
+    """列出由水位偏移报告核对出来的分区级质量告警。"""
+    items = service.list_alerts(topic)
+    return {"items": items, "total": len(items)}
+
+
+@router.get("/reports/{topic_code}/{check_version}", response_model=dict)
+def get_report_check(topic_code: str, check_version: str) -> dict:
+    """按同一检查版本核对水位偏移报告与分区告警，跨模块交接保留来源批次。"""
+    result = service.get_report_check(topic_code, check_version)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"主题 {topic_code} 缺少检查版本 {check_version} 的水位偏移报告")
+    return result
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条质量规则明细；不存在时给出可读的错误说明。"""

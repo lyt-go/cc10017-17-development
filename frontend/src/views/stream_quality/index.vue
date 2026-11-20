@@ -18,6 +18,71 @@
       </article>
     </div>
 
+    <section class="offset-board" data-testid="alert-board">
+      <header class="offset-head">
+        <div>
+          <h3>分区级质量告警</h3>
+          <p class="page-desc">核对水位追踪的双水位偏移报告：按同一检查版本列出受影响分区与偏移来源。</p>
+        </div>
+        <div class="page-actions">
+          <label class="offset-topic">
+            <span>监控主题</span>
+            <input v-model="alertTopic" data-testid="alert-topic" placeholder="如 TOPI-0001" />
+          </label>
+          <label class="offset-topic">
+            <span>检查版本</span>
+            <input v-model="alertVersion" data-testid="alert-version" placeholder="留空取当前版本" />
+          </label>
+          <button class="btn primary" data-testid="check-report" type="button" @click="checkReport">
+            核对偏移报告
+          </button>
+        </div>
+      </header>
+
+      <div v-if="reconciliation" class="offset-detail" data-testid="reconciliation">
+        <dl>
+          <div><dt>报告编号</dt><dd data-testid="recon-report">{{ reconciliation.报告.报告编号 }}</dd></div>
+          <div><dt>检查版本</dt><dd>{{ reconciliation.报告.检查版本 }}</dd></div>
+          <div><dt>偏移来源</dt><dd data-testid="recon-source">{{ reconciliation.偏移来源 }}</dd></div>
+          <div><dt>受影响分区</dt><dd data-testid="recon-partitions">{{ reconciliation.受影响分区.join('、') || '无' }}</dd></div>
+          <div><dt>来源批次</dt><dd data-testid="recon-batch">{{ reconciliation.来源批次 ?? '—' }}</dd></div>
+          <div><dt>核对结果</dt><dd>{{ reconciliation.检查结果 ? (reconciliation.检查结果.passed ? '通过' : '告警') : '未核对' }}</dd></div>
+        </dl>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>告警编号</th>
+            <th>规则编号</th>
+            <th>监控主题</th>
+            <th>分区编号</th>
+            <th>偏移来源</th>
+            <th>报告编号</th>
+            <th>检查版本</th>
+            <th>来源批次</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="alert in alerts" :key="String(alert.id)" :data-testid="`alert-${alert.分区编号}`">
+            <td>{{ alert.告警编号 }}</td>
+            <td>{{ alert.规则编号 }}</td>
+            <td>{{ alert.监控主题 }}</td>
+            <td>{{ alert.分区编号 }}</td>
+            <td>{{ alert.偏移来源 }}</td>
+            <td>{{ alert.报告编号 }}</td>
+            <td>{{ alert.检查版本 }}</td>
+            <td>{{ alert.来源批次 }}</td>
+            <td>{{ alert.状态 }}</td>
+          </tr>
+          <tr v-if="!alerts.length">
+            <td colspan="9" class="empty-state">暂无分区级告警，质量规则生效后按偏移报告核对生成</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <form class="filter-bar" @submit.prevent="reload">
       <label v-for="field in filterFields" :key="field" class="filter-item">
         <span>{{ field }}</span>
@@ -106,6 +171,45 @@ const stats = computed(() => [
   { label: metricNames[2], value: rows.value.filter((row) => row.status === statuses[statuses.length - 1]).length },
 ])
 
+const alertTopic = ref('TOPI-0001')
+const alertVersion = ref('')
+const alerts = ref<Record<string, any>[]>([])
+const reconciliation = ref<Record<string, any> | null>(null)
+
+async function reloadAlerts() {
+  try {
+    const query = new URLSearchParams({ topic: alertTopic.value.trim() }).toString()
+    const response = await request(`${ENDPOINT}/alerts?${query}`)
+    if (!response.ok) throw new Error('分区告警读取失败')
+    alerts.value = (await response.json()).items ?? []
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '分区告警读取失败'
+  }
+}
+
+async function checkReport() {
+  errorMessage.value = ''
+  const topic = alertTopic.value.trim()
+  if (!topic) {
+    errorMessage.value = '请先填写监控主题'
+    return
+  }
+  const version = alertVersion.value.trim()
+  if (!version) {
+    errorMessage.value = '请填写检查版本，或先在水位追踪页生成报告'
+    return
+  }
+  try {
+    const response = await request(`${ENDPOINT}/reports/${encodeURIComponent(topic)}/${encodeURIComponent(version)}`)
+    if (!response.ok) throw new Error('该检查版本没有对应的水位偏移报告')
+    reconciliation.value = await response.json()
+    await reloadAlerts()
+  } catch (error) {
+    reconciliation.value = null
+    errorMessage.value = error instanceof Error ? error.message : '偏移报告核对失败'
+  }
+}
+
 function resetFilters() {
   filters.value = {}
   void reload()
@@ -184,5 +288,8 @@ async function reload() {
   }
 }
 
-onMounted(reload)
+onMounted(() => {
+  void reload()
+  void reloadAlerts()
+})
 </script>

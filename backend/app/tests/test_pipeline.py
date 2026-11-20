@@ -235,6 +235,24 @@ class TestFullLineageGraph(unittest.TestCase):
         self.assertIn("realtime_ingest", overview["chains"])
         self.assertIn("cdc_to_lake", overview["chains"])
 
+    def test_overview_module_count_stays_18(self) -> None:
+        """内部支撑表不冒充业务模块，18 个既有业务模块仍全部在列。"""
+        overview = store.overview()
+        names = {row["name"] for row in overview["modules"]}
+        expected = {
+            "topic_registry", "flink_job", "kafka_connector", "schema_evolve",
+            "upsert_merge", "lake_partition", "stream_quality", "iceberg_table",
+            "watermark_track", "dead_letter", "materialized_view", "change_capture",
+            "compact_policy", "stream_lineage", "backfill_stream", "sink_dispatch",
+            "ttl_policy", "realtime_metrics",
+        }
+        self.assertEqual(len(expected), 18)
+        self.assertTrue(expected.issubset(names))
+        self.assertNotIn("watermark_partition_samples", names)
+        artifacts = overview["artifacts"]
+        self.assertIn("watermark_offset_reports", artifacts)
+        self.assertIn("quality_partition_alerts", artifacts)
+
 
 class TestCrossModuleConstraints(unittest.TestCase):
     """跨模块约束与状态机校验"""

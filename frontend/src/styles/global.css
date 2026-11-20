@@ -70,3 +70,20 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .analysis-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 12px 0; }
 .analysis-bar { flex: 1; border-radius: 4px 4px 0 0; background: var(--brand); min-width: 24px; position: relative; transition: height 0.4s; }
 .analysis-bar span { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; }
+/* 双水位偏移报告 / 分区告警看板 */
+.offset-board { margin: 16px 0; padding: 12px; background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+.offset-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.offset-head h3 { margin: 0; font-size: 15px; }
+.offset-topic { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.offset-topic input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+.offset-cards { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.offset-card { flex: 1; min-width: 120px; background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+.offset-detail { margin-top: 12px; padding: 12px; background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; }
+.offset-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.offset-detail-head h4 { margin: 0; font-size: 14px; }
+.offset-detail dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 16px; margin: 0 0 8px; }
+.offset-detail dt { font-size: 12px; color: var(--muted); }
+.offset-detail dd { font-size: 13px; margin: 2px 0 0; }
+.offset-note { font-size: 12px; color: var(--muted); margin: 6px 0 10px; }
+.tag-ok { color: #15803d; background: #dcfce7; border-radius: 4px; padding: 1px 8px; font-size: 12px; }
+.tag-warn { color: #b45309; background: #fef3c7; border-radius: 4px; padding: 1px 8px; font-size: 12px; }
